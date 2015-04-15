@@ -1,0 +1,18 @@
+// dll.idl : IDL source for dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (dll.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	uuid(55FB4356-1578-4A42-9103-5DD8310C21FE),
+	version(1.0),
+]
+library dllLib
+{
+	importlib("stdole2.tlb");
+};
+
