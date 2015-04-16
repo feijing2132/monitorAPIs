@@ -4,7 +4,6 @@
 #include "stdafx.h"
 #include <Windows.h>
 #include <stdio.h>
-#include "Injectors.h"
 using namespace std;
 
 #ifndef INJECTORS_H_
@@ -12,7 +11,6 @@ using namespace std;
 
 #include <stdio.h>
 #include <Windows.h>
-#include "WindowsUtils.h"
 
 #include <windows.h>
 #include <stdio.h>
