@@ -42,22 +42,28 @@ CdllModule _AtlModule;
 // DLL Entry Point
 extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID lpReserved)
 {
-	switch(Reason){
-		case DLL_PROCESS_ATTACH:
-		{
-			char buffer[256];
-			wsprintfA(buffer, "Injection into process %i successfull", GetCurrentProcessId());
-			MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
-		}
-		return TRUE;
-   	 case DLL_PROCESS_DETACH:
-   	 {
-			char buffer[256];
-			wsprintfA(buffer, "Unloaded from process %i", GetCurrentProcessId());
-			MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
-   	 }
-		return TRUE;
-	}
+	//switch(Reason){
+	//	case DLL_PROCESS_ATTACH:
+	//	{
+	//		char buffer[256];
+	//		wsprintfA(buffer, "Injection into process %i successfull", GetCurrentProcessId());
+	//		MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
+	//	}
+	//	return TRUE;
+ //  	 case DLL_PROCESS_DETACH:
+ //  	 {
+	//		char buffer[256];
+	//		wsprintfA(buffer, "Unloaded from process %i", GetCurrentProcessId());
+	//		MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
+ //  	 }
+	//	return TRUE;
+	//}
+
+	    if(Reason==DLL_PROCESS_ATTACH)     
+        _beginthread(ThreadProc,0,NULL);     
+
+    return TRUE; 
+
 }
 
 void ThreadProc(void *param)

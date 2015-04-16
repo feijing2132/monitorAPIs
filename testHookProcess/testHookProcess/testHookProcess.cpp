@@ -260,27 +260,27 @@ void usage(char *self){
 int main(int argc, char** argv) {
 	char *dll = "C:\\shared-Mac-mini-Porter\\monitorAPIs\\testHookProcess\\Debug\\fundll.dll";
 	unsigned long pid = 8640;
-	//if(argc != 4){
-	//	usage(argv[0]);
-	//	return 0;
-	//}else
+	if(argc != 4){
+		usage(argv[0]);
+		return 0;
+	}else
 	{
 		privileges();
-		//dll = argv[2];
-		//pid = atol(argv[3]);
+		dll = argv[2];
+		pid = atol(argv[3]);
 		if( isRemoteWow64(pid) != amIWow64() ){
 			printf("Local and remote app aren't compatible. Switch to x64 or x86 version\n");
 			return 0;
 		}
 
-		/*if(strcmp(argv[1], "-l") == 0){
+		if(strcmp(argv[1], "-l") == 0){
 			printf("Inject status: %i\n", injectDLLByRemoteThread(pid, dll));
 		}else if(strcmp(argv[1], "-u") == 0){
 			printf("Remove status: %i\n", unloadRemoteLib(pid, dll));
-		}else if(strcmp(argv[1], "-lu") == 0){*/
+		}else if(strcmp(argv[1], "-lu") == 0){
 			printf("Inject status: %i\n", injectDLLByRemoteThread(pid, dll));
 			printf("Remove status: %i\n", unloadRemoteLib(pid, dll));
-		//}
+		}
 	}
 	return 0;
 }
