@@ -10,6 +10,12 @@
 #include "tlhelp32.h"
 #include "stdio.h"
 
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+
+extern "C" __declspec(dllexport) void unload() {
+	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FreeLibrary, &__ImageBase, 0, NULL);
+}
+
 //#pragma comment(lib,"th32.lib")
 
 PIMAGE_DOS_HEADER pDosHeader;
@@ -34,12 +40,24 @@ void ThreadProc(void *param);//Ïß³Ìº¯Êý
 CdllModule _AtlModule;
 
 // DLL Entry Point
-extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
+extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID lpReserved)
 {
-	if(dwReason==DLL_PROCESS_ATTACH)     
-		_beginthread(ThreadProc,0,NULL);     
-
-	return TRUE; 
+	switch(Reason){
+		case DLL_PROCESS_ATTACH:
+		{
+			char buffer[256];
+			wsprintfA(buffer, "Injection into process %i successfull", GetCurrentProcessId());
+			MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
+		}
+		return TRUE;
+   	 case DLL_PROCESS_DETACH:
+   	 {
+			char buffer[256];
+			wsprintfA(buffer, "Unloaded from process %i", GetCurrentProcessId());
+			MessageBoxA(NULL, buffer, "InjectInfo", MB_OK);
+   	 }
+		return TRUE;
+	}
 }
 
 void ThreadProc(void *param)
