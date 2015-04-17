@@ -9,7 +9,7 @@
 #include "process.h"
 #include "tlhelp32.h"
 #include "stdio.h"
-
+//#define _WIN64
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 extern "C" __declspec(dllexport) void unload() {
@@ -28,10 +28,10 @@ HMODULE hMod;
 
 
 // 定义MessageBoxA函数原型
-typedef int (WINAPI *PFNMESSAGEBOX)(HWND, LPCSTR, LPCSTR, UINT uType);
-int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType);
+typedef int (WINAPI *PFNMESSAGEBOX)(HWND, LPCTSTR, LPCTSTR, UINT uType);
+int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption, IN UINT uType);
 
-int * addr = (int *)MessageBoxA;     //保存函数的入口地址
+int * addr = (int *)MessageBox;     //保存函数的入口地址
 int * myaddr = (int *)MessageBoxProxy;
 
 
@@ -86,8 +86,8 @@ void ThreadProc(void *param)
 		int no = 1;
 		while(pThunkData->u1.Function)
 		{
-			char * funname = (char *)((BYTE *)hMod + (DWORD)pThunkData->u1.AddressOfData + 2);
-			PDWORD lpAddr = (DWORD *)((BYTE *)hMod + (DWORD)pImportDescriptor->FirstThunk) +(no-1);
+			char * funname = (char *)((BYTE *)hMod + (DWORD64)pThunkData->u1.AddressOfData + 2);
+			PDWORD64 lpAddr = (DWORD64 *)((BYTE *)hMod + (DWORD64)pImportDescriptor->FirstThunk) +(no-1);
 
 			//修改内存的部分
 			if((*lpAddr) == (int)addr)
@@ -99,9 +99,9 @@ void ThreadProc(void *param)
 				VirtualProtect(lpAddr,sizeof(DWORD),PAGE_READWRITE,&dwOLD);
 
 				WriteProcessMemory(GetCurrentProcess(), 
-					lpAddr, &myaddr, sizeof(DWORD), NULL);
+					lpAddr, &myaddr, sizeof(DWORD64), NULL);
 				//恢复内存页的属性
-				VirtualProtect(lpAddr,sizeof(DWORD),dwOLD,0);
+				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
 			}
 			//---------
 			no++;
@@ -114,9 +114,9 @@ void ThreadProc(void *param)
 }
 
 //new messagebox function
-int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCSTR lpText, IN LPCSTR lpCaption, IN UINT uType)
+int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption, IN UINT uType)
 {
-	return       ((PFNMESSAGEBOX)addr)(NULL, "gxter_test", "gxter_title", 0);
+	return       ((PFNMESSAGEBOX)addr)(NULL, L"gxter_test", L"gxter_title", 0);
 	//这个地方可以写出对这个API函数的处理代码
 }
 

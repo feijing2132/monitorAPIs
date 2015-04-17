@@ -11,7 +11,7 @@ using namespace std;
 
 #include <stdio.h>
 #include <Windows.h>
-
+//#include <atlconv.h>
 #include <windows.h>
 #include <stdio.h>
 #include <fstream>
@@ -105,7 +105,7 @@ struct NtCreateThreadExBuffer
   ULONG Unknown8;
 };
 HANDLE NtCreateThreadEx(HANDLE process, LPTHREAD_START_ROUTINE Start, LPVOID lpParameter){
-	HMODULE modNtDll = LoadLibrary("ntdll.dll");
+	HMODULE modNtDll = LoadLibrary(_T("ntdll.dll"));
 	if(!modNtDll){
 		printf("Error loading ntdll.dll\n");
 		return 0;
@@ -145,6 +145,56 @@ HANDLE NtCreateThreadEx(HANDLE process, LPTHREAD_START_ROUTINE Start, LPVOID lpP
 	return hThread;
 }
 
+
+//全局变量声明 
+HANDLE   hProcessSnap=NULL;     //进程快照句柄 
+DWORD64   dwRemoteProcessId;       //目标进程ID 
+DWORD64   getPid(char *INJECT_PROCESS_NAME)
+{
+	//BOOL result = FALSE;
+	////提升权限
+	//result = EnableDebugPrivilege();
+	//if(result != TRUE)
+	//{
+	//	printf("add privilege failed!\n");
+	//	return -1;
+	//}
+	PROCESSENTRY32   pe32={0}; 
+	//打开进程快照
+	hProcessSnap=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0); 
+
+
+	if(hProcessSnap==(HANDLE)-1) 
+	{ 
+		return   -1; 
+	}    
+
+
+	pe32.dwSize=sizeof(PROCESSENTRY32); 
+
+	//获取目标进程的ID
+	if(Process32First(hProcessSnap,&pe32))   //获取第一个进程 
+	{ 
+		do{ 
+			char te[MAX_PATH]; 
+			strcpy(te,pe32.szExeFile); 
+			if(strcmp(te, INJECT_PROCESS_NAME) == 0)
+			{ 
+				dwRemoteProcessId=pe32.th32ProcessID; 
+				printf("%d\n",dwRemoteProcessId);
+				break; 
+			}     
+		}     
+		while(Process32Next(hProcessSnap,&pe32));//获取下一个进程 
+	} 
+	else 
+	{ 
+		return   -1; 
+	} 
+
+	return dwRemoteProcessId;
+}
+
 BOOL isRemoteWow64(unsigned long pid){
 	privileges();
 	BOOL ret;
@@ -167,7 +217,7 @@ DWORD injectDLLByRemoteThread(unsigned long pid, char* dllName){
 	HANDLE p;
 	p = OpenProcess(PROCESS_ALL_ACCESS,false,pid);
 	if (p==NULL) return GetLastError();
-	HMODULE hKernel32 = ::GetModuleHandle("Kernel32");
+	HMODULE hKernel32 = ::GetModuleHandle(_T("Kernel32"));
 	LPVOID DataAddress = VirtualAllocEx(p, NULL, strlen(dllName) + 1, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	WriteProcessMemory(p, DataAddress, dllName, strlen(dllName), NULL);
 
@@ -256,7 +306,7 @@ void usage(char *self){
 }
 
 int main(int argc, char** argv) {
-	char *dll = "C:\\shared-Mac-mini-Porter\\monitorAPIs\\testHookProcess\\Debug\\fundll.dll";
+	char *dll = "C:\\Users\\Administrator\\Desktop\\monitorAPIs\\testHookProcess\\x64\\Debug\\fundll.dll";
 	unsigned long pid = 8640;
 	if(argc != 4){
 		usage(argv[0]);
@@ -265,7 +315,8 @@ int main(int argc, char** argv) {
 	{
 		privileges();
 		dll = argv[2];
-		pid = atol(argv[3]);
+		//pid = atol(argv[3]);
+		pid = getPid(argv[3]);
 		if( isRemoteWow64(pid) != amIWow64() ){
 			printf("Local and remote app aren't compatible. Switch to x64 or x86 version\n");
 			return 0;

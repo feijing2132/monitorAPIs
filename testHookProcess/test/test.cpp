@@ -13,7 +13,7 @@ int main()
 	while(1)
 	{
 		getchar();
-		MessageBoxA(NULL, "原函数", "09HookDemo", 0);
+		MessageBox(NULL, L"原函数", L"09HookDemo", 0);
 	}
 	return 0;
 }
