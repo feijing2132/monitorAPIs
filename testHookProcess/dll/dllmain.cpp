@@ -32,6 +32,14 @@ typedef int (WINAPI *PFNMESSAGEBOX)(HWND, LPCTSTR, LPCTSTR, UINT uType);
 typedef __kernel_entry NTSTATUS (NTAPI *PFNNtOpenFile)(PHANDLE FileHandle,ACCESS_MASK DesiredAccess,POBJECT_ATTRIBUTES ObjectAttributes,PIO_STATUS_BLOCK IoStatusBlock,ULONG ShareAccess,
     ULONG OpenOptions
     );
+typedef HANDLE (WINAPI *PFNCreateFile)( LPCTSTR lpFileName,
+ DWORD dwDesiredAccess,
+ DWORD dwShareMode,
+ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+ DWORD dwCreationDisposition,
+ DWORD dwFlagsAndAttributes,
+ HANDLE hTemplateFile
+	);
 //NTSTATUS
 //NTAPI 
 //NtOpenFile (
@@ -60,12 +68,24 @@ __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
     IN ULONG OpenOptions
     );
 
+HANDLE WINAPI CreateFileProxy(
+	IN LPCTSTR lpFileName,
+	IN DWORD dwDesiredAccess,
+	IN DWORD dwShareMode,
+	IN LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	IN DWORD dwCreationDisposition,
+	IN DWORD dwFlagsAndAttributes,
+	IN HANDLE hTemplateFile
+	);
+
 int * addr = (int *)MessageBox;     //保存函数的入口地址
-//int *addrNTOpenFile = (int *)NtOpenFile;
+int *addrNTOpenFile;// = (int *)NtOpenFile;
+int *addrCreateFile = (int *)CreateFile;
 //;
 //MessageBox;
 int * myaddr = (int *)MessageBoxProxy;
-
+int * myaddrNTOpenFile = (int *)NtOpenFileProxy;
+int * myaddrCreateFile = (int *)CreateFileProxy;
 
 void ThreadProc(void *param);//线程函数
 
@@ -100,6 +120,12 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID lpReser
 
 void ThreadProc(void *param)
 {
+	//HMODULE modNtDll = LoadLibrary(_T("ntdll.dll"));
+	//if(!modNtDll){
+	//	printf("Error loading ntdll.dll\n");
+	//}
+	//addrNTOpenFile = (int *) GetProcAddress(modNtDll, "NtOpenFile");
+
 	//------------hook api----------------
 	hMod = GetModuleHandle(NULL);
 
@@ -122,7 +148,9 @@ void ThreadProc(void *param)
 			PDWORD64 lpAddr = (DWORD64 *)((BYTE *)hMod + (DWORD64)pImportDescriptor->FirstThunk) +(no-1);
 
 			//修改内存的部分
-			if((*lpAddr) == (int)addr)
+			//if((*lpAddr) == (int)addrNTOpenFile)
+			//if((*lpAddr) == (int)addr)
+			if((*lpAddr) == (int)addrCreateFile)
 			{
 				//修改内存页的属性
 				DWORD dwOLD;
@@ -131,7 +159,7 @@ void ThreadProc(void *param)
 				VirtualProtect(lpAddr,sizeof(DWORD),PAGE_READWRITE,&dwOLD);
 
 				WriteProcessMemory(GetCurrentProcess(), 
-					lpAddr, &myaddr, sizeof(DWORD64), NULL);
+					lpAddr, &myaddrCreateFile, sizeof(DWORD64), NULL);
 				//恢复内存页的属性
 				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
 			}
@@ -149,6 +177,48 @@ void ThreadProc(void *param)
 int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption, IN UINT uType)
 {
 	return       ((PFNMESSAGEBOX)addr)(NULL, L"gxter_test", L"gxter_title", 0);
+	//这个地方可以写出对这个API函数的处理代码
+}
+
+__kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
+	OUT PHANDLE FileHandle,
+	IN ACCESS_MASK DesiredAccess,
+	IN POBJECT_ATTRIBUTES ObjectAttributes,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	IN ULONG ShareAccess,
+	IN ULONG OpenOptions
+	)
+{
+	MessageBox(NULL, L"gxter_test", L"gxter_title", 0);
+	return       ((PFNNtOpenFile)addrNTOpenFile)(FileHandle,
+		DesiredAccess,
+		ObjectAttributes,
+		IoStatusBlock,
+		ShareAccess,
+		OpenOptions
+		);
+	//这个地方可以写出对这个API函数的处理代码
+}
+
+HANDLE WINAPI CreateFileProxy(
+	IN LPCTSTR lpFileName,
+	IN DWORD dwDesiredAccess,
+	IN DWORD dwShareMode,
+	IN LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	IN DWORD dwCreationDisposition,
+	IN DWORD dwFlagsAndAttributes,
+	IN HANDLE hTemplateFile
+	)
+{
+	MessageBox(NULL, L"gxter_testsss", L"gxter_titlesss", 0);
+	return       ((PFNCreateFile)addrCreateFile)(lpFileName,
+		dwDesiredAccess,
+		dwShareMode,
+		lpSecurityAttributes,
+		dwCreationDisposition,
+		dwFlagsAndAttributes,
+		hTemplateFile
+		);
 	//这个地方可以写出对这个API函数的处理代码
 }
 

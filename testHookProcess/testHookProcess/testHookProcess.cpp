@@ -331,5 +331,7 @@ int main(int argc, char** argv) {
 			printf("Remove status: %i\n", unloadRemoteLib(pid, dll));
 		}
 	}
+
+	system("PAUSE");
 	return 0;
 }
