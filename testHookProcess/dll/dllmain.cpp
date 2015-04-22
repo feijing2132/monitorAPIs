@@ -4,7 +4,7 @@
 #include "resource.h"
 #include "dll_i.h"
 #include "dllmain.h"
-
+#include <Winternl.h>
 #include "windows.h"
 #include "process.h"
 #include "tlhelp32.h"
@@ -29,9 +29,41 @@ HMODULE hMod;
 
 // 定义MessageBoxA函数原型
 typedef int (WINAPI *PFNMESSAGEBOX)(HWND, LPCTSTR, LPCTSTR, UINT uType);
+typedef __kernel_entry NTSTATUS (NTAPI *PFNNtOpenFile)(PHANDLE FileHandle,ACCESS_MASK DesiredAccess,POBJECT_ATTRIBUTES ObjectAttributes,PIO_STATUS_BLOCK IoStatusBlock,ULONG ShareAccess,
+    ULONG OpenOptions
+    );
+//NTSTATUS
+//NTAPI 
+//NtOpenFile (
+    //OUT PHANDLE FileHandle,
+    //IN ACCESS_MASK DesiredAccess,
+    //IN POBJECT_ATTRIBUTES ObjectAttributes,
+    //OUT PIO_STATUS_BLOCK IoStatusBlock,
+    //IN ULONG ShareAccess,
+    //IN ULONG OpenOptions
+    //);
+
+//int
+//WINAPI
+//MessageBoxW(
+//    __in_opt HWND hWnd,
+//    __in_opt LPCWSTR lpText,
+//    __in_opt LPCWSTR lpCaption,
+//    __in UINT uType);
 int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption, IN UINT uType);
+__kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
+    OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN ULONG ShareAccess,
+    IN ULONG OpenOptions
+    );
 
 int * addr = (int *)MessageBox;     //保存函数的入口地址
+//int *addrNTOpenFile = (int *)NtOpenFile;
+//;
+//MessageBox;
 int * myaddr = (int *)MessageBoxProxy;
 
 
