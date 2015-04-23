@@ -9,6 +9,11 @@
 #include "process.h"
 #include "tlhelp32.h"
 #include "stdio.h"
+#include <iostream>
+#include <string>
+
+using namespace std;
+//#include <afx.h>
 //#define _WIN64
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
@@ -210,7 +215,12 @@ HANDLE WINAPI CreateFileProxy(
 	IN HANDLE hTemplateFile
 	)
 {
-	MessageBox(NULL, L"gxter_testsss", L"gxter_titlesss", 0);
+	wstring fileName(lpFileName);
+	if (fileName.find(_T(".rvt")) != std::string::npos)
+	{
+		MessageBox(NULL, lpFileName, L"Opening...", 0);
+	}
+	
 	return       ((PFNCreateFile)addrCreateFile)(lpFileName,
 		dwDesiredAccess,
 		dwShareMode,
