@@ -86,6 +86,7 @@ HANDLE WINAPI CreateFileProxy(
 int * addr = (int *)MessageBox;     //保存函数的入口地址
 int *addrNTOpenFile;// = (int *)NtOpenFile;
 int *addrCreateFile = (int *)CreateFile;
+int *addrCloseFile = (int *)CloseHandle;
 //;
 //MessageBox;
 int * myaddr = (int *)MessageBoxProxy;
