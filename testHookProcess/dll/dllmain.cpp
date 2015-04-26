@@ -11,6 +11,7 @@
 #include "stdio.h"
 #include <iostream>
 #include <string>
+#include <psapi.h>
 
 using namespace std;
 //#include <afx.h>
@@ -20,6 +21,183 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 extern "C" __declspec(dllexport) void unload() {
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FreeLibrary, &__ImageBase, 0, NULL);
 }
+
+//#include  <Psapi.h > 
+
+#define        BUFSIZE                         512 
+#pragma comment(lib, "psapi.lib" )
+BOOL __stdcall GetFileNameFromHandle(HANDLE hFile, LPWSTR lpFileName, DWORD dwSize)
+{
+	BOOL bSuccess  =  FALSE;
+	WCHAR pszFilename[MAX_PATH + 1 ];
+	HANDLE hFileMap;
+
+	DWORD dwFileSizeHi  =   0 ;
+	DWORD dwFileSizeLo  =  ::GetFileSize(hFile,  & dwFileSizeHi); 
+
+	if ( dwFileSizeLo ==   0   && dwFileSizeHi  ==  0  )
+	{
+		return  bSuccess;
+	}
+
+	hFileMap  =  ::CreateFileMappingW(hFile, 
+		NULL, 
+		PAGE_READONLY,
+		0 , 
+		1 ,
+		NULL);
+
+	if  (hFileMap) 
+	{
+		void *  pMem  = ::MapViewOfFile(hFileMap, FILE_MAP_READ,  0 ,  0,  1 );
+
+		if  (pMem) 
+		{
+			if  (::GetMappedFileNameW(GetCurrentProcess(), 
+				pMem, 
+				pszFilename,
+				MAX_PATH)) 
+			{
+				WCHAR szTemp[BUFSIZE];
+				szTemp[ 0 ]  =  L'\0 ';
+
+				if  (::GetLogicalDriveStringsW(BUFSIZE - 1 , szTemp)) 
+				{
+					WCHAR szName[MAX_PATH];
+					WCHAR szDrive[3] =  L":";
+					BOOL bFound  =  FALSE;
+					WCHAR *  p  =  szTemp;
+
+					do  
+					{
+						* szDrive  =   * p;
+
+						if  (::QueryDosDeviceW(szDrive, szName, BUFSIZE))
+						{
+							UINT uNameLen  =  lstrlenW(szName);
+
+							if  (uNameLen  <  MAX_PATH) 
+							{
+								bFound  =  ::_wcsnicmp(pszFilename, szName, 
+									uNameLen)  ==   0 ;
+
+								if  (bFound) 
+								{
+									WCHAR szTempFile[MAX_PATH];
+									::wsprintfW(szTempFile,
+										L"%s%s" ,
+										szDrive,
+										pszFilename+uNameLen);
+									::lstrcpynW(pszFilename, szTempFile, MAX_PATH);
+								}
+							}
+						}
+
+						while  ( * p++ );
+					}  while  ( ! bFound &&   * p); 
+				}
+			}
+			::UnmapViewOfFile(pMem);
+		} 
+
+		::CloseHandle(hFileMap);
+	}
+
+	if (lpFileName)
+	{
+		::lstrcpynW(lpFileName,pszFilename,dwSize);
+		bSuccess  =  TRUE;
+	}
+
+	return (bSuccess);
+}
+
+//#define BUFSIZE 512
+//
+//BOOL GetFileNameFromHandle(HANDLE hFile) 
+//{
+//	BOOL bSuccess = FALSE;
+//	TCHAR pszFilename[MAX_PATH+1];
+//
+//	// Get the file size.
+//	DWORD dwFileSizeHi = 0;
+//	DWORD dwFileSizeLo = GetFileSize(hFile, &dwFileSizeHi); 
+//
+//	// Create a file mapping object.
+//	HANDLE hFileMap = CreateFileMapping(hFile, 
+//		NULL, 
+//		PAGE_READONLY,
+//		0, 
+//		dwFileSizeLo,
+//		NULL);
+//
+//	if (hFileMap) 
+//	{
+//		// Create a file mapping to get the file name.
+//		void* pMem = MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, 1);
+//
+//		if (pMem) 
+//		{
+//			if (GetMappedFileName (GetCurrentProcess(), 
+//				pMem, 
+//				pszFilename,
+//				MAX_PATH)) 
+//			{
+//
+//				// Translate path with device name to drive letters.
+//				TCHAR szTemp[BUFSIZE];
+//				szTemp[0] = '\0';
+//
+//				if (GetLogicalDriveStrings(BUFSIZE-1, szTemp)) 
+//				{
+//					TCHAR szName[MAX_PATH];
+//					TCHAR szDrive[3] = TEXT(" :");
+//					BOOL bFound = FALSE;
+//					TCHAR* p = szTemp;
+//
+//					do 
+//					{
+//						// Copy the drive letter to the template string
+//						*szDrive = *p;
+//
+//						// Look up each device name
+//						if (QueryDosDevice(szDrive, szName, BUFSIZE))
+//						{
+//							UINT uNameLen = _tcslen(szName);
+//
+//							if (uNameLen < MAX_PATH) 
+//							{
+//								bFound = _tcsnicmp(pszFilename, szName, 
+//									uNameLen) == 0;
+//
+//								if (bFound) 
+//								{
+//									// Reconstruct pszFilename using szTemp
+//									// Replace device path with DOS path
+//									TCHAR szTempFile[MAX_PATH];
+//									_stprintf(szTempFile,
+//										TEXT("%s%s"),
+//										szDrive,
+//										pszFilename+uNameLen);
+//									_tcsncpy(pszFilename, szTempFile, MAX_PATH);
+//								}
+//							}
+//						}
+//
+//						// Go to the next NULL character.
+//						while (*p++);
+//					} while (!bFound && *p); // end of string
+//				}
+//			}
+//			bSuccess = TRUE;
+//			UnmapViewOfFile(pMem);
+//		} 
+//
+//		CloseHandle(hFileMap);
+//	}
+//	printf("File name is %s\n", pszFilename);
+//	return(bSuccess);
+//}
 
 //#pragma comment(lib,"th32.lib")
 
@@ -45,6 +223,8 @@ typedef HANDLE (WINAPI *PFNCreateFile)( LPCTSTR lpFileName,
  DWORD dwFlagsAndAttributes,
  HANDLE hTemplateFile
 	);
+
+typedef BOOL (WINAPI *PFNCLOSEHANDLE)(HANDLE);
 //NTSTATUS
 //NTAPI 
 //NtOpenFile (
@@ -83,15 +263,22 @@ HANDLE WINAPI CreateFileProxy(
 	IN HANDLE hTemplateFile
 	);
 
+BOOL
+	WINAPI
+	CloseHandleProxy(
+	IN HANDLE hObject
+	);
+
 int * addr = (int *)MessageBox;     //保存函数的入口地址
 int *addrNTOpenFile;// = (int *)NtOpenFile;
 int *addrCreateFile = (int *)CreateFile;
-int *addrCloseFile = (int *)CloseHandle;
+int *addrCloseHandle = (int *)CloseHandle;
 //;
 //MessageBox;
 int * myaddr = (int *)MessageBoxProxy;
 int * myaddrNTOpenFile = (int *)NtOpenFileProxy;
 int * myaddrCreateFile = (int *)CreateFileProxy;
+int * myaddrCloseHandle = (int *)CloseHandleProxy;
 
 void ThreadProc(void *param);//线程函数
 
@@ -169,6 +356,19 @@ void ThreadProc(void *param)
 				//恢复内存页的属性
 				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
 			}
+			else if((*lpAddr) == (int)addrCloseHandle)
+			{
+				//修改内存页的属性
+				DWORD dwOLD;
+				MEMORY_BASIC_INFORMATION mbi;
+				VirtualQuery(lpAddr,&mbi,sizeof(mbi));
+				VirtualProtect(lpAddr,sizeof(DWORD),PAGE_READWRITE,&dwOLD);
+
+				WriteProcessMemory(GetCurrentProcess(), 
+					lpAddr, &myaddrCloseHandle, sizeof(DWORD64), NULL);
+				//恢复内存页的属性
+				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
+			}
 			//---------
 			no++;
 			pThunkData++;
@@ -217,7 +417,7 @@ HANDLE WINAPI CreateFileProxy(
 	)
 {
 	wstring fileName(lpFileName);
-	if (fileName.find(_T(".rvt")) != std::string::npos)
+	if (fileName.find(_T(".txt")) != std::string::npos)
 	{
 		MessageBox(NULL, lpFileName, L"Opening...", 0);
 	}
@@ -231,5 +431,25 @@ HANDLE WINAPI CreateFileProxy(
 		hTemplateFile
 		);
 	//这个地方可以写出对这个API函数的处理代码
+}
+
+BOOL
+	WINAPI
+	CloseHandleProxy(
+	IN HANDLE hObject
+	)
+{
+	WCHAR pszFilename[MAX_PATH + 1 ];
+	BOOL ok = GetFileNameFromHandle(hObject, pszFilename, MAX_PATH);
+	if (ok)
+	{
+		wstring fileName(pszFilename);
+		if (fileName.find(_T(".txt")) != std::string::npos)
+		{
+			MessageBox(NULL, pszFilename, L"Closing...", 0);
+		}
+	}
+
+	return ((PFNCLOSEHANDLE)addrCloseHandle)(hObject);
 }
 
