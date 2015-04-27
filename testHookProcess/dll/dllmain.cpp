@@ -216,6 +216,18 @@ typedef int (WINAPI *PFNMESSAGEBOX)(HWND, LPCTSTR, LPCTSTR, UINT uType);
 typedef __kernel_entry NTSTATUS (NTAPI *PFNNtOpenFile)(PHANDLE FileHandle,ACCESS_MASK DesiredAccess,POBJECT_ATTRIBUTES ObjectAttributes,PIO_STATUS_BLOCK IoStatusBlock,ULONG ShareAccess,
     ULONG OpenOptions
     );
+typedef __kernel_entry NTSTATUS (NTAPI *PFNNtCreateFile)(    OUT PHANDLE FileHandle,
+    ACCESS_MASK DesiredAccess,
+    POBJECT_ATTRIBUTES ObjectAttributes,
+    PIO_STATUS_BLOCK IoStatusBlock,
+    PLARGE_INTEGER AllocationSize OPTIONAL,
+    ULONG FileAttributes,
+    ULONG ShareAccess,
+    ULONG CreateDisposition,
+    ULONG CreateOptions,
+    PVOID EaBuffer OPTIONAL,
+    ULONG EaLength);
+
 typedef HANDLE (WINAPI *PFNCreateFile)( LPCTSTR lpFileName,
  DWORD dwDesiredAccess,
  DWORD dwShareMode,
@@ -254,6 +266,21 @@ __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
     IN ULONG OpenOptions
     );
 
+__kernel_entry NTSTATUS NTAPI NtCreateFileProxy (
+    OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PLARGE_INTEGER AllocationSize OPTIONAL,
+    IN ULONG FileAttributes,
+    IN ULONG ShareAccess,
+    IN ULONG CreateDisposition,
+    IN ULONG CreateOptions,
+    IN PVOID EaBuffer OPTIONAL,
+    IN ULONG EaLength
+    );
+
+
 HANDLE WINAPI CreateFileProxy(
 	IN LPCTSTR lpFileName,
 	IN DWORD dwDesiredAccess,
@@ -272,12 +299,14 @@ BOOL
 
 int * addr = (int *)MessageBox;     //保存函数的入口地址
 int *addrNTOpenFile;// = (int *)NtOpenFile;
+int *addrNTCreateFile;// = (int *)NtCreateFile;
 int *addrCreateFile = (int *)CreateFile;
 int *addrCloseHandle = (int *)CloseHandle;
 //;
 //MessageBox;
 int * myaddr = (int *)MessageBoxProxy;
 int * myaddrNTOpenFile = (int *)NtOpenFileProxy;
+int * myaddrNTCreateFile = (int *)NtCreateFileProxy;
 int * myaddrCreateFile = (int *)CreateFileProxy;
 int * myaddrCloseHandle = (int *)CloseHandleProxy;
 
@@ -314,11 +343,12 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD Reason, LPVOID lpReser
 
 void ThreadProc(void *param)
 {
-	//HMODULE modNtDll = LoadLibrary(_T("ntdll.dll"));
-	//if(!modNtDll){
-	//	printf("Error loading ntdll.dll\n");
-	//}
-	//addrNTOpenFile = (int *) GetProcAddress(modNtDll, "NtOpenFile");
+	HMODULE modNtDll = LoadLibrary(_T("ntdll.dll"));
+	if(!modNtDll){
+		printf("Error loading ntdll.dll\n");
+	}
+	addrNTOpenFile = (int *) GetProcAddress(modNtDll, "NtOpenFile");
+	addrNTCreateFile = (int *) GetProcAddress(modNtDll, "NtCreateFile");
 
 	//------------hook api----------------
 	hMod = GetModuleHandle(NULL);
@@ -370,6 +400,19 @@ void ThreadProc(void *param)
 				//恢复内存页的属性
 				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
 			}
+			else if((*lpAddr) == (int)addrNTCreateFile)
+			{
+				//修改内存页的属性
+				DWORD dwOLD;
+				MEMORY_BASIC_INFORMATION mbi;
+				VirtualQuery(lpAddr,&mbi,sizeof(mbi));
+				VirtualProtect(lpAddr,sizeof(DWORD),PAGE_READWRITE,&dwOLD);
+
+				WriteProcessMemory(GetCurrentProcess(), 
+					lpAddr, &myaddrNTCreateFile, sizeof(DWORD64), NULL);
+				//恢复内存页的属性
+				VirtualProtect(lpAddr,sizeof(DWORD64),dwOLD,0);
+			}
 			//---------
 			no++;
 			pThunkData++;
@@ -386,6 +429,35 @@ int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption
 	return ((PFNMESSAGEBOX)addr)(NULL, L"gxter_test", L"gxter_title", 0);
 }
 
+__kernel_entry NTSTATUS NTAPI NtCreateFileProxy (
+ OUT PHANDLE FileHandle,
+    IN ACCESS_MASK DesiredAccess,
+    IN POBJECT_ATTRIBUTES ObjectAttributes,
+    OUT PIO_STATUS_BLOCK IoStatusBlock,
+    IN PLARGE_INTEGER AllocationSize OPTIONAL,
+    IN ULONG FileAttributes,
+    IN ULONG ShareAccess,
+    IN ULONG CreateDisposition,
+    IN ULONG CreateOptions,
+    IN PVOID EaBuffer OPTIONAL,
+    IN ULONG EaLength
+	)
+{
+	MessageBox(NULL, L"NtCreateFileProxy", L"gxter_title", 0);
+	return ((PFNNtCreateFile)addrNTCreateFile)( FileHandle,
+    DesiredAccess,
+    ObjectAttributes,
+    IoStatusBlock,
+     AllocationSize ,
+    FileAttributes,
+    ShareAccess,
+    CreateDisposition,
+    CreateOptions,
+    EaBuffer ,
+    EaLength
+	);
+}
+
 __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
 	OUT PHANDLE FileHandle,
 	IN ACCESS_MASK DesiredAccess,
@@ -395,7 +467,7 @@ __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
 	IN ULONG OpenOptions
 	)
 {
-	MessageBox(NULL, L"gxter_test", L"gxter_title", 0);
+	MessageBox(NULL, L"NtOpenFileProxy", L"gxter_title", 0);
 	return ((PFNNtOpenFile)addrNTOpenFile)(FileHandle,
 		DesiredAccess,
 		ObjectAttributes,
