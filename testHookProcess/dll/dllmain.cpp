@@ -17,6 +17,7 @@ using namespace std;
 //#include <afx.h>
 //#define _WIN64
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+TCHAR *MONITOR_FILE_TYPE = _T(".txt");
 
 extern "C" __declspec(dllexport) void unload() {
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FreeLibrary, &__ImageBase, 0, NULL);
@@ -382,8 +383,7 @@ void ThreadProc(void *param)
 //new messagebox function
 int WINAPI MessageBoxProxy(IN HWND hWnd, IN LPCTSTR lpText, IN LPCTSTR lpCaption, IN UINT uType)
 {
-	return       ((PFNMESSAGEBOX)addr)(NULL, L"gxter_test", L"gxter_title", 0);
-	//这个地方可以写出对这个API函数的处理代码
+	return ((PFNMESSAGEBOX)addr)(NULL, L"gxter_test", L"gxter_title", 0);
 }
 
 __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
@@ -396,14 +396,13 @@ __kernel_entry NTSTATUS NTAPI NtOpenFileProxy (
 	)
 {
 	MessageBox(NULL, L"gxter_test", L"gxter_title", 0);
-	return       ((PFNNtOpenFile)addrNTOpenFile)(FileHandle,
+	return ((PFNNtOpenFile)addrNTOpenFile)(FileHandle,
 		DesiredAccess,
 		ObjectAttributes,
 		IoStatusBlock,
 		ShareAccess,
 		OpenOptions
 		);
-	//这个地方可以写出对这个API函数的处理代码
 }
 
 HANDLE WINAPI CreateFileProxy(
@@ -417,12 +416,12 @@ HANDLE WINAPI CreateFileProxy(
 	)
 {
 	wstring fileName(lpFileName);
-	if (fileName.find(_T(".txt")) != std::string::npos)
+	if (fileName.find(MONITOR_FILE_TYPE) != std::string::npos)
 	{
 		MessageBox(NULL, lpFileName, L"Opening...", 0);
 	}
 	
-	return       ((PFNCreateFile)addrCreateFile)(lpFileName,
+	return ((PFNCreateFile)addrCreateFile)(lpFileName,
 		dwDesiredAccess,
 		dwShareMode,
 		lpSecurityAttributes,
@@ -430,7 +429,6 @@ HANDLE WINAPI CreateFileProxy(
 		dwFlagsAndAttributes,
 		hTemplateFile
 		);
-	//这个地方可以写出对这个API函数的处理代码
 }
 
 BOOL
@@ -444,7 +442,7 @@ BOOL
 	if (ok)
 	{
 		wstring fileName(pszFilename);
-		if (fileName.find(_T(".txt")) != std::string::npos)
+		if (fileName.find(MONITOR_FILE_TYPE) != std::string::npos)
 		{
 			MessageBox(NULL, pszFilename, L"Closing...", 0);
 		}
